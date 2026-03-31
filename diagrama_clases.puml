@@ -1,0 +1,379 @@
+@startuml diagrama_clases_cafeteria
+' ============================================================
+' Sistema de Cafetería - Diagrama de Clases UML
+' Fase 1 - Proyecto Integrador
+' ============================================================
+' Patrones de diseño implementados:
+'   1. Singleton  → SistemaCafeteria, Inventario
+'   2. Factory Method → IFabricaProducto + fábricas concretas
+'   3. Observer  → IObservador + SujetoObservable
+'   4. Strategy  → IEstrategiaPago + estrategias concretas
+' ============================================================
+
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FAFAFA
+skinparam class {
+  BackgroundColor #EEF4FF
+  BorderColor     #3A6DAB
+  ArrowColor      #3A6DAB
+  FontName        Arial
+}
+skinparam note {
+  BackgroundColor #FFFCE8
+  BorderColor     #CCA800
+}
+skinparam stereotypeCBackgroundColor #D0E8FF
+skinparam stereotypeABackgroundColor #FFE0CC
+
+' ============================================================
+' PAQUETE: modelos.producto
+' ============================================================
+
+package "modelos.producto" #EEF4FF {
+
+  interface IProducto <<interface>> {
+    +{abstract} nombre : str
+    +{abstract} precio : float
+    +{abstract} descripcion : str
+    +{abstract} obtener_categoria() : str
+  }
+
+  abstract class Producto <<abstract>> {
+    #_nombre     : str
+    #_precio     : float
+    #_descripcion: str
+    +nombre      : str
+    +precio      : float
+    +descripcion : str
+    +{abstract} obtener_categoria() : str
+    +__str__() : str
+  }
+
+  class Bebida {
+    #_temperatura : str
+    +temperatura  : str
+    +obtener_categoria() : str
+  }
+
+  class Comida {
+    #_calorias : int
+    +calorias  : int
+    +obtener_categoria() : str
+  }
+
+  class Postre {
+    #_contiene_gluten : bool
+    +contiene_gluten  : bool
+    +obtener_categoria() : str
+  }
+
+  IProducto      <|..  Producto     : implements
+  Producto       <|--  Bebida       : extends
+  Producto       <|--  Comida       : extends
+  Producto       <|--  Postre       : extends
+}
+
+' ============================================================
+' PAQUETE: modelos.pedido
+' ============================================================
+
+package "modelos.pedido" #EEF4FF {
+
+  enum EstadoPedido {
+    PENDIENTE
+    EN_PREPARACION
+    LISTO
+    ENTREGADO
+    CANCELADO
+  }
+
+  class ItemPedido {
+    #_producto  : IProducto
+    #_cantidad  : int
+    +producto   : IProducto
+    +cantidad   : int
+    +subtotal   : float
+    +__str__()  : str
+  }
+
+  class Pedido {
+    #_id             : int
+    #_cliente_nombre : str
+    #_items          : List[ItemPedido]
+    #_estado         : EstadoPedido
+    #_observadores   : List[IObservador]
+    +pedido_id       : int
+    +cliente_nombre  : str
+    +estado          : EstadoPedido
+    +items           : List[ItemPedido]
+    +total           : float
+    +agregar_item(item: ItemPedido) : void
+    +suscribir_observador(obs) : void
+    +cambiar_estado(estado: EstadoPedido) : void
+    -_notificar_observadores() : void
+    +__str__() : str
+  }
+
+  Pedido "1" *-- "0..*" ItemPedido      : contiene >
+  Pedido "1" --> "1"    EstadoPedido    : tiene >
+  ItemPedido "1" --> "1" IProducto      : referencia >
+}
+
+' ============================================================
+' PAQUETE: modelos.cliente y modelos.empleado
+' ============================================================
+
+package "modelos.cliente_empleado" #EEF4FF {
+
+  class Cliente {
+    #_nombre             : str
+    #_correo             : str
+    #_historial_pedidos  : List[Pedido]
+    +nombre              : str
+    +correo              : str
+    +historial_pedidos   : List[Pedido]
+    +agregar_pedido(p: Pedido) : void
+    +__str__() : str
+  }
+
+  abstract class Empleado <<abstract>> {
+    #_nombre       : str
+    #_empleado_id  : int
+    #_salario      : float
+    +nombre        : str
+    +empleado_id   : int
+    +salario       : float
+    +{abstract} realizar_tarea() : str
+  }
+
+  class Cajero {
+    +realizar_tarea() : str
+    +notificar_nuevo_pedido(id: int) : void
+  }
+
+  class Cocinero {
+    #_especialidad : str
+    +especialidad  : str
+    +realizar_tarea() : str
+    +notificar_pedido_listo(id: int) : void
+  }
+
+  Empleado <|-- Cajero    : extends
+  Empleado <|-- Cocinero  : extends
+  Cliente "1" --> "0..*" Pedido : tiene historial >
+}
+
+' ============================================================
+' PAQUETE: modelos.menu
+' ============================================================
+
+package "modelos.menu" #EEF4FF {
+
+  class Menu {
+    #_productos : Dict[str, IProducto]
+    +agregar_producto(p: IProducto) : void
+    +eliminar_producto(nombre: str) : void
+    +obtener_producto(nombre: str) : IProducto
+    +listar_productos() : List[IProducto]
+    +listar_por_categoria(cat: str) : List[IProducto]
+    +__str__() : str
+  }
+
+  Menu "1" o-- "0..*" IProducto : gestiona >
+}
+
+' ============================================================
+' PAQUETE: patrones.observador  [Patrón Observer]
+' ============================================================
+
+package "patrones.observador" #FFE8CC {
+
+  note as NObserver
+    **Patrón Observer**
+    SujetoObservable mantiene una lista
+    de IObservador y los notifica cuando
+    cambia el estado de un Pedido.
+  end note
+
+  interface IObservador <<interface>> {
+    +{abstract} actualizar(pedido: Pedido) : void
+  }
+
+  class SujetoObservable {
+    #_observadores : List[IObservador]
+    +suscribir(obs: IObservador) : void
+    +desuscribir(obs: IObservador) : void
+    +notificar(pedido: Pedido) : void
+  }
+
+  class ObservadorCajero {
+    #_nombre : str
+    +nombre  : str
+    +actualizar(pedido: Pedido) : void
+  }
+
+  class ObservadorCocinero {
+    #_nombre : str
+    +nombre  : str
+    +actualizar(pedido: Pedido) : void
+  }
+
+  IObservador       <|..  ObservadorCajero    : implements
+  IObservador       <|..  ObservadorCocinero  : implements
+  SujetoObservable  "1" o-- "0..*" IObservador : notifica >
+}
+
+' ============================================================
+' PAQUETE: patrones.fabrica  [Patrón Factory Method]
+' ============================================================
+
+package "patrones.fabrica" #D8F0D8 {
+
+  note as NFactory
+    **Patrón Factory Method**
+    IFabricaProducto define la interfaz;
+    cada subclase crea el producto concreto
+    adecuado sin acoplar al cliente.
+  end note
+
+  interface IFabricaProducto <<interface>> {
+    +{abstract} crear_producto(nombre, precio, desc, **kwargs) : IProducto
+  }
+
+  class FabricaBebida {
+    +crear_producto(..., temperatura) : Bebida
+  }
+
+  class FabricaComida {
+    +crear_producto(..., calorias) : Comida
+  }
+
+  class FabricaPostre {
+    +crear_producto(..., contiene_gluten) : Postre
+  }
+
+  IFabricaProducto <|.. FabricaBebida  : implements
+  IFabricaProducto <|.. FabricaComida  : implements
+  IFabricaProducto <|.. FabricaPostre  : implements
+
+  FabricaBebida ..> Bebida  : crea >
+  FabricaComida ..> Comida  : crea >
+  FabricaPostre ..> Postre  : crea >
+}
+
+' ============================================================
+' PAQUETE: patrones.estrategia_pago  [Patrón Strategy]
+' ============================================================
+
+package "patrones.estrategia_pago" #F0E8FF {
+
+  note as NStrategy
+    **Patrón Strategy**
+    ContextoPago delega el procesamiento
+    del pago a la IEstrategiaPago
+    configurada, permitiendo cambiarla
+    en tiempo de ejecución.
+  end note
+
+  interface IEstrategiaPago <<interface>> {
+    +{abstract} procesar_pago(monto: float) : str
+  }
+
+  class PagoEfectivo {
+    #_monto_entregado : float
+    +procesar_pago(monto: float) : str
+  }
+
+  class PagoTarjeta {
+    #_ultimos_digitos : str
+    #_tipo            : str
+    +procesar_pago(monto: float) : str
+  }
+
+  class PagoDigital {
+    #_cuenta     : str
+    #_plataforma : str
+    +procesar_pago(monto: float) : str
+  }
+
+  class ContextoPago {
+    #_estrategia : IEstrategiaPago
+    +estrategia  : IEstrategiaPago
+    +establecer_estrategia(e: IEstrategiaPago) : void
+    +ejecutar_pago(monto: float) : str
+  }
+
+  IEstrategiaPago <|.. PagoEfectivo : implements
+  IEstrategiaPago <|.. PagoTarjeta  : implements
+  IEstrategiaPago <|.. PagoDigital  : implements
+  ContextoPago "1" o--> "1" IEstrategiaPago : usa >
+}
+
+' ============================================================
+' PAQUETE: inventario  [Patrón Singleton]
+' ============================================================
+
+package "inventario" #FFE8E8 {
+
+  note as NSingleton1
+    **Patrón Singleton**
+    Una única instancia de Inventario
+    en toda la aplicación.
+  end note
+
+  class Inventario <<Singleton>> {
+    -{static} _instancia : Inventario
+    #_stock : Dict[str, int]
+    +{static} resetear() : void
+    +agregar_stock(p: IProducto, cant: int) : void
+    +reducir_stock(p: IProducto, cant: int) : void
+    +consultar_stock(p: IProducto) : int
+    +hay_disponibilidad(p: IProducto, cant: int) : bool
+    +__str__() : str
+  }
+
+  Inventario "1" --> "0..*" IProducto : administra stock >
+}
+
+' ============================================================
+' PAQUETE: sistema_cafeteria  [Patrón Singleton + Fachada]
+' ============================================================
+
+package "sistema_cafeteria" #FFE8E8 {
+
+  note as NSingleton2
+    **Patrón Singleton**
+    SistemaCafeteria coordina todos
+    los subsistemas y garantiza
+    una única instancia global.
+  end note
+
+  class SistemaCafeteria <<Singleton>> {
+    -{static} _instancia : SistemaCafeteria
+    #_menu       : Menu
+    #_inventario : Inventario
+    #_pedidos    : Dict[int, Pedido]
+    +{static} resetear() : void
+    +menu        : Menu
+    +inventario  : Inventario
+    +registrar_producto(cat, nombre, precio, desc, **kw) : IProducto
+    +abastecer(p: IProducto, cant: int) : void
+    +crear_pedido(cliente: str) : Pedido
+    +agregar_item_a_pedido(p: Pedido, nombre: str, cant: int) : void
+    +actualizar_estado_pedido(p: Pedido, est: EstadoPedido) : void
+    +obtener_pedido(id: int) : Pedido
+    +listar_pedidos() : List[Pedido]
+    +procesar_pago(p: Pedido, est: IEstrategiaPago) : str
+    +registrar_observador(obs: IObservador) : void
+    +eliminar_observador(obs: IObservador) : void
+  }
+
+  SistemaCafeteria --|>  SujetoObservable    : extends
+  SistemaCafeteria "1" *-- "1"  Menu         : posee >
+  SistemaCafeteria "1" *-- "1"  Inventario   : posee >
+  SistemaCafeteria "1" *-- "0..*" Pedido     : registra >
+  SistemaCafeteria ..>  IFabricaProducto     : usa (Factory) >
+  SistemaCafeteria ..>  IEstrategiaPago      : usa (Strategy) >
+}
+
+@enduml
