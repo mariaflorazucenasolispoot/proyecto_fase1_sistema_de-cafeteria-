@@ -1,0 +1,177 @@
+
+import java.util.ArrayList;
+import java.util.List;
+
+// -------------------------
+// Clase abstracta Producto
+// -------------------------
+abstract class Producto {
+    protected String nombre;
+    protected double precio;
+
+    public Producto(String nombre, double precio) {
+        this.nombre = nombre;
+        this.precio = precio;
+    }
+
+    // Método polimórfico
+    public abstract void mostrarInfo();
+
+    public double getPrecio() {
+        return precio;
+    }
+}
+
+// -------------------------
+// Herencia de Producto
+// -------------------------
+class Cafe extends Producto {
+
+    public Cafe(String nombre, double precio) {
+        super(nombre, precio);
+    }
+
+    @Override
+    public void mostrarInfo() {
+        System.out.println("☕ Café: " + nombre + " - $" + precio);
+    }
+}
+
+class Postre extends Producto {
+
+    public Postre(String nombre, double precio) {
+        super(nombre, precio);
+    }
+
+    @Override
+    public void mostrarInfo() {
+        System.out.println("🍰 Postre: " + nombre + " - $" + precio);
+    }
+}
+
+// -------------------------
+// Clase abstracta MetodoPago
+// -------------------------
+abstract class MetodoPago {
+
+    // Método polimórfico
+    public abstract void procesarPago(double monto);
+}
+
+// -------------------------
+// Herencia de MetodoPago
+// -------------------------
+class PagoTarjeta extends MetodoPago {
+
+    @Override
+    public void procesarPago(double monto) {
+        System.out.println("💳 Pago con tarjeta realizado por $" + monto);
+    }
+}
+
+class PagoEfectivo extends MetodoPago {
+
+    @Override
+    public void procesarPago(double monto) {
+        System.out.println("💵 Pago en efectivo realizado por $" + monto);
+    }
+}
+
+// -------------------------
+// Clase Cliente
+// -------------------------
+class Cliente {
+
+    private String nombre;
+    private MetodoPago metodoPago;
+
+    public Cliente(String nombre) {
+        this.nombre = nombre;
+    }
+
+    public void setMetodoPago(MetodoPago metodoPago) {
+        this.metodoPago = metodoPago;
+    }
+
+    public void realizarPago(double monto) {
+        metodoPago.procesarPago(monto);
+    }
+
+    public String getNombre() {
+        return nombre;
+    }
+}
+
+// -------------------------
+// Clase Orden
+// -------------------------
+class Orden {
+
+    private List<Producto> productos = new ArrayList<>();
+    private Cliente cliente;
+
+    public Orden(Cliente cliente) {
+        this.cliente = cliente;
+    }
+
+    public void agregarProducto(Producto producto) {
+        productos.add(producto);
+    }
+
+    public double calcularTotal() {
+        double total = 0;
+
+        for (Producto p : productos) {
+            total += p.getPrecio();
+        }
+
+        return total;
+    }
+
+    public void mostrarOrden() {
+
+        System.out.println("\n===== ORDEN =====");
+
+        for (Producto p : productos) {
+            p.mostrarInfo(); // POLIMORFISMO
+        }
+
+        System.out.println("Total: $" + calcularTotal());
+    }
+
+    public void pagar() {
+        cliente.realizarPago(calcularTotal());
+    }
+}
+
+// -------------------------
+// Clase principal
+// -------------------------
+public class CafeteriaApp {
+
+    public static void main(String[] args) {
+
+        // Crear cliente
+        Cliente cliente = new Cliente("Luis");
+
+        // POLIMORFISMO
+        MetodoPago pago = new PagoTarjeta();
+        cliente.setMetodoPago(pago);
+
+        // Crear orden
+        Orden orden = new Orden(cliente);
+
+        // HERENCIA + POLIMORFISMO
+        Producto cafe = new Cafe("Capuchino", 65);
+        Producto postre = new Postre("Cheesecake", 80);
+
+        orden.agregarProducto(cafe);
+        orden.agregarProducto(postre);
+
+        // Mostrar orden
+        orden.mostrarOrden();
+
+        // Realizar pago
+        orden.pagar();
+    }
+}
